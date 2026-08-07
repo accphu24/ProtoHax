@@ -69,8 +69,8 @@ class RelayListenerAutoCodec(private val session: MinecraftRelaySession) : Minec
             Bedrock_v503.CODEC, Bedrock_v527.CODEC, Bedrock_v534.CODEC,
             Bedrock_v544.CODEC, Bedrock_v557.CODEC, Bedrock_v560.CODEC,
             Bedrock_v567.CODEC, Bedrock_v575.CODEC, Bedrock_v582.CODEC,
-			Bedrock_v589.CODEC, Bedrock_v594.CODEC
-        ).associateBy { it.protocolVersion }
+            Bedrock_v589.CODEC, Bedrock_v594.CODEC
+        ).associateBy { it.protocolVersion }.toSortedMap()
 
         private fun pickProtocolCodec(version: Int): BedrockCodec {
             var codecResult = BedrockCompat.CODEC
