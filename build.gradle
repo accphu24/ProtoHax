@@ -12,8 +12,7 @@ repositories {
     mavenCentral()
     maven { url = 'https://repo.opencollab.dev/maven-releases/' }
     maven { url = 'https://repo.opencollab.dev/maven-snapshots/' }
-    maven { url = 'https://mccheatz.github.io/maven_repo/' }
-    maven { url = 'https://jitpack.io' }
+    maven { url = 'https://raw.githubusercontent.com/SkidderMC/ProtoHax-PackageGit/main/maven_repo/' }
 }
 
 configurations {
@@ -29,10 +28,10 @@ dependencies {
     }
 
     embed 'com.google.code.gson:gson:2.10.1'
-    embed('com.github.coelho:minecraft-msftauth:master-SNAPSHOT') {
+    embed('coelho.msftauth:minecraft-msftauth:2.1.6') {
         exclude group: 'com.squareup.okhttp3'
     }
-    embed 'com.github.0x9fff00:leveldb:master-SNAPSHOT'
+    embed 'io.github._0x9fff00.leveldb:leveldb:0.10.2'
     embed('com.squareup.okhttp3:okhttp:4.11.0') {
         exclude group: 'org.jetbrains.kotlin'
     }
