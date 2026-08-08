@@ -14,12 +14,11 @@ data class XboxDeviceInfo(val appId: String, val deviceType: String,
  * @param token refresh token or authorization code
  * @return Pair<AccessToken, RefreshToken>
  */
-fun refreshToken(token: String): Pair<String, String> {
+fun refreshToken(token: String, isAuthorizationCode: Boolean = false): Pair<String, String> {
 val form = FormBody.Builder()
 form.add("client_id", appId)
 form.add("redirect_uri", "https://login.live.com/oauth20_desktop.srf")
-// if the last part of the token was uuid, it must be authorization code
-if (token.split("\n")[0].substring(token.lastIndexOf('.')+1).length == 36) {
+if (isAuthorizationCode) {
 form.add("grant_type", "authorization_code")
 form.add("code", token)
 } else {
