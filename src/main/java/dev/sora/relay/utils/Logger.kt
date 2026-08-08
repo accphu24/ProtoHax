@@ -19,5 +19,8 @@ fun logError(vararg msg: Any?) {
 }
 
 fun logError(msg: String, t: Throwable) {
-    logger.error(msg, t)
+    val sw = java.io.StringWriter()
+    t.printStackTrace(java.io.PrintWriter(sw))
+    logger.error("$msg: $t\n$sw")
+    t.printStackTrace()
 }
