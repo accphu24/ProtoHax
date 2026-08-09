@@ -3,6 +3,7 @@ package dev.sora.relay
 import dev.sora.relay.game.GameSession
 import dev.sora.relay.session.CustomFrameIdCodec
 import dev.sora.relay.session.MinecraftRelaySession
+import dev.sora.relay.utils.logError
 import dev.sora.relay.utils.logInfo
 import io.netty.bootstrap.Bootstrap
 import io.netty.bootstrap.ServerBootstrap
@@ -34,22 +35,22 @@ open class MinecraftRelay(private val listener: MinecraftRelayListener,
                      val motd: BedrockPong = DEFAULT_PONG,
                      val packetCodec: BedrockCodec = BedrockCompat.CODEC) {
 
-	private var channelFuture: ChannelFuture? = null
+private var channelFuture: ChannelFuture? = null
 
-	val isRunning: Boolean
-		get() = channelFuture != null
+val isRunning: Boolean
+get() = channelFuture != null
 
-	/**
-	 * affects latency
-	 */
-	var optionReliability = RakReliability.RELIABLE_ORDERED
+/**
+ * affects latency
+ */
+var optionReliability = RakReliability.RELIABLE_ORDERED
 
-	open fun channelFactory(): ChannelFactory<out ServerChannel> {
-		return RakChannelFactory.server(NioDatagramChannel::class.java)
-	}
+open fun channelFactory(): ChannelFactory<out ServerChannel> {
+return RakChannelFactory.server(NioDatagramChannel::class.java)
+}
 
     fun bind(address: InetSocketAddress) {
-		assert(!isRunning) { "server is already running" }
+assert(!isRunning) { "server is already running" }
 
         motd
             .ipv4Port(address.port)
@@ -58,28 +59,28 @@ open class MinecraftRelay(private val listener: MinecraftRelayListener,
             .channelFactory(channelFactory())
             .option(RakChannelOption.RAK_ADVERTISEMENT, motd.toByteBuf())
             .option(RakChannelOption.RAK_SUPPORTED_PROTOCOLS, intArrayOf(8, 9, 10, 11))
-			.option(RakChannelOption.RAK_GUID, Random.nextLong())
+.option(RakChannelOption.RAK_GUID, Random.nextLong())
             .group(NioEventLoopGroup())
             .childHandler(BedrockRelayInitializer())
             .bind(address)
             .syncUninterruptibly()
     }
 
-	fun stop() {
-		assert(isRunning) { "server is not running" }
+fun stop() {
+assert(isRunning) { "server is not running" }
 
-		channelFuture?.channel()?.also {
-			it.close().syncUninterruptibly()
-			it.parent().close().syncUninterruptibly()
-		}
-		channelFuture = null
-	}
+channelFuture?.channel()?.also {
+it.close().syncUninterruptibly()
+it.parent().close().syncUninterruptibly()
+}
+channelFuture = null
+}
 
     inner class BedrockRelayInitializer : BedrockServerInitializer() {
 
         override fun createSession0(peer: BedrockPeer, subClientId: Int): BedrockServerSession {
             val session = MinecraftRelaySession(peer, subClientId)
-			logInfo("client connected")
+logInfo("client connected")
             val address = listener.onSessionCreation(session)
 
             // establish connection to actual server
@@ -101,20 +102,26 @@ open class MinecraftRelay(private val listener: MinecraftRelayListener,
                 }
                 .group(NioEventLoopGroup())
                 .option(RakChannelOption.RAK_PROTOCOL_VERSION, peer.channel.config().getOption(RakChannelOption.RAK_PROTOCOL_VERSION))
-				.option(RakChannelOption.RAK_GUID, Random.nextLong())
+.option(RakChannelOption.RAK_GUID, Random.nextLong())
                 .handler(object : BedrockClientInitializer() {
                     override fun createSession0(peer: BedrockPeer, subClientId: Int): BedrockClientSession {
-						logInfo("server connected")
+logInfo("server connected")
                         return session.MinecraftRelayClientSession(peer, subClientId).also {
                             session.client = it
                         }
                     }
 
-					override fun postInitChannel(channel: Channel) {
-						super.postInitChannel(channel)
-						// use custom reliability settings
-						injectFrameIdCodec(channel, CustomFrameIdCodec(reliability = optionReliability))
-					}
+override fun postInitChannel(channel: Channel) {
+super.postInitChannel(channel)
+// use custom reliability settings
+injectFrameIdCodec(channel, CustomFrameIdCodec(reliability = optionReliability))
+channel.pipeline().addLast(object : io.netty.channel.ChannelInboundHandlerAdapter() {
+override fun exceptionCaught(ctx: io.netty.channel.ChannelHandlerContext, cause: Throwable) {
+logError("outbound(server) channel exception", cause)
+ctx.fireExceptionCaught(cause)
+}
+})
+}
 
                     override fun initSession(session: BedrockClientSession) {}
                 })
@@ -128,19 +135,25 @@ open class MinecraftRelay(private val listener: MinecraftRelayListener,
             session.codec = packetCodec
         }
 
-		override fun postInitChannel(channel: Channel) {
-			super.postInitChannel(channel)
-			// use custom reliability settings
-			injectFrameIdCodec(channel)
-		}
+override fun postInitChannel(channel: Channel) {
+super.postInitChannel(channel)
+// use custom reliability settings
+injectFrameIdCodec(channel)
+channel.pipeline().addLast(object : io.netty.channel.ChannelInboundHandlerAdapter() {
+override fun exceptionCaught(ctx: io.netty.channel.ChannelHandlerContext, cause: Throwable) {
+logError("inbound(client) channel exception", cause)
+ctx.fireExceptionCaught(cause)
+}
+})
+}
     }
 
-	private fun injectFrameIdCodec(channel: Channel, codec: CustomFrameIdCodec = CustomFrameIdCodec.INSTANCE) {
-		channel.pipeline().addBefore(FrameIdCodec.NAME, CustomFrameIdCodec.NAME, codec)
-		channel.pipeline().remove(FrameIdCodec.NAME)
-		channel.pipeline().addBefore(CustomFrameIdCodec.NAME, FrameIdCodec.NAME, codec)
-		channel.pipeline().remove(CustomFrameIdCodec.NAME)
-	}
+private fun injectFrameIdCodec(channel: Channel, codec: CustomFrameIdCodec = CustomFrameIdCodec.INSTANCE) {
+channel.pipeline().addBefore(FrameIdCodec.NAME, CustomFrameIdCodec.NAME, codec)
+channel.pipeline().remove(FrameIdCodec.NAME)
+channel.pipeline().addBefore(CustomFrameIdCodec.NAME, FrameIdCodec.NAME, codec)
+channel.pipeline().remove(CustomFrameIdCodec.NAME)
+}
 
     companion object {
         private val DEFAULT_PONG = BedrockPong()
