@@ -127,7 +127,7 @@ public final class BedrockCodec {
             Class<? extends BedrockPacket> packetClass = factory.get().getClass();
             checkArgument(id >= 0, "id cannot be negative");
             checkArgument(!packets.containsKey(packetClass), "Packet class already registered");
-            BedrockPacketDefinition<T> info = new BedrockPacketDefinition<>(id, factory, serializer);
+            BedrockPacketDefinition<T> info = new BedrockPacketDefinition<>(id, factory, serializer, org.cloudburstmc.protocol.bedrock.data.PacketRecipient.BOTH);
             packets.put(packetClass, info);
             return this;
         }
@@ -135,7 +135,7 @@ public final class BedrockCodec {
         public <T extends BedrockPacket> Builder updateSerializer(Class<T> packetClass, BedrockPacketSerializer<T> serializer) {
             BedrockPacketDefinition<T> info = (BedrockPacketDefinition<T>) packets.get(packetClass);
             checkArgument(info != null, "Packet does not exist");
-            BedrockPacketDefinition<T> updatedInfo = new BedrockPacketDefinition<>(info.getId(), info.getFactory(), serializer);
+            BedrockPacketDefinition<T> updatedInfo = new BedrockPacketDefinition<>(info.getId(), info.getFactory(), serializer, info.getRecipient());
             packets.replace(packetClass, info, updatedInfo);
             return this;
         }
