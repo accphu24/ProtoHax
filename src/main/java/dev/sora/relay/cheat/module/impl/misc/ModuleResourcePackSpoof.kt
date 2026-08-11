@@ -19,58 +19,58 @@ class ModuleResourcePackSpoof : CheatModule("ResourcePackSpoof", CheatCategory.M
 
     private var acceptServerPacks by boolValue("AcceptServerPacks", false)
 
-	private val handlePacketInbound = handle<EventPacketInbound> {
-		if (packet is ResourcePacksInfoPacket) {
-			if (!acceptServerPacks) {
-				packet.resourcePackInfos.clear()
-				packet.behaviorPackInfos.clear()
-			}
-			// this will make the client download the resource pack
-			packet.resourcePackInfos.addAll(resourcePackProvider.getEntry())
-		} else if (packet is ResourcePackStackPacket) {
-			if (!acceptServerPacks) {
-				packet.resourcePacks.clear()
-				packet.behaviorPacks.clear()
-			}
-			// this will make the client load the resource pack
-			packet.resourcePacks.addAll(resourcePackProvider.getEntry().map {
-				ResourcePackStackPacket.Entry(it.packId, it.packVersion, it.subPackName)
-			})
-		}
-	}
+private val handlePacketInbound = handle<EventPacketInbound> {
+if (packet is ResourcePacksInfoPacket) {
+if (!acceptServerPacks) {
+packet.resourcePackInfos.clear()
+packet.behaviorPackInfos.clear()
+}
+// this will make the client download the resource pack
+packet.resourcePackInfos.addAll(resourcePackProvider.getEntry())
+} else if (packet is ResourcePackStackPacket) {
+if (!acceptServerPacks) {
+packet.resourcePacks.clear()
+packet.behaviorPacks.clear()
+}
+// this will make the client load the resource pack
+packet.resourcePacks.addAll(resourcePackProvider.getEntry().map {
+ResourcePackStackPacket.Entry(it.packId.toString(), it.packVersion, it.subPackName)
+})
+}
+}
 
     private val handlePacketOutbound = handle<EventPacketOutbound> {
-		if (packet is ResourcePackClientResponsePacket) {
-			if (packet.status == ResourcePackClientResponsePacket.Status.SEND_PACKS) {
-				packet.packIds.map { it }.forEach {
-					val entry = resourcePackProvider.getPackById(it) ?: return@forEach
-					session.netSession.inboundPacket(ResourcePackDataInfoPacket().apply {
-						packId = UUID.fromString(entry.first.packId)
-						packVersion = entry.first.packVersion
-						maxChunkSize = RESOURCE_PACK_CHUNK_SIZE.toLong()
-						chunkCount = entry.first.packSize / RESOURCE_PACK_CHUNK_SIZE
-						compressedPackSize = entry.first.packSize
-						hash = MessageDigest.getInstance("SHA-256").digest(entry.second)
-						type = ResourcePackType.RESOURCES
-					})
-					packet.packIds.remove(it)
-				}
-				if (packet.packIds.isEmpty()) {
-					cancel()
-				}
-			}
-		} else if (packet is ResourcePackChunkRequestPacket) {
-			val entry = resourcePackProvider.getPackById(packet.packId.toString()) ?: return@handle
-			session.netSession.inboundPacket(ResourcePackChunkDataPacket().apply {
-				packId = packet.packId
-				packVersion = packet.packVersion
-				chunkIndex = packet.chunkIndex
-				progress = (RESOURCE_PACK_CHUNK_SIZE * chunkIndex).toLong()
-				data = Unpooled.wrappedBuffer(getPackChunk(entry.second, progress.toInt(), RESOURCE_PACK_CHUNK_SIZE))
-			})
-			cancel()
-		}
-	}
+if (packet is ResourcePackClientResponsePacket) {
+if (packet.status == ResourcePackClientResponsePacket.Status.SEND_PACKS) {
+packet.packIds.map { it }.forEach {
+val entry = resourcePackProvider.getPackById(it) ?: return@forEach
+session.netSession.inboundPacket(ResourcePackDataInfoPacket().apply {
+packId = entry.first.packId
+packVersion = entry.first.packVersion
+maxChunkSize = RESOURCE_PACK_CHUNK_SIZE.toLong()
+chunkCount = entry.first.packSize / RESOURCE_PACK_CHUNK_SIZE
+compressedPackSize = entry.first.packSize
+hash = MessageDigest.getInstance("SHA-256").digest(entry.second)
+type = ResourcePackType.RESOURCES
+})
+packet.packIds.remove(it)
+}
+if (packet.packIds.isEmpty()) {
+cancel()
+}
+}
+} else if (packet is ResourcePackChunkRequestPacket) {
+val entry = resourcePackProvider.getPackById(packet.packId.toString()) ?: return@handle
+session.netSession.inboundPacket(ResourcePackChunkDataPacket().apply {
+packId = packet.packId
+packVersion = packet.packVersion
+chunkIndex = packet.chunkIndex
+progress = (RESOURCE_PACK_CHUNK_SIZE * chunkIndex).toLong()
+data = Unpooled.wrappedBuffer(getPackChunk(entry.second, progress.toInt(), RESOURCE_PACK_CHUNK_SIZE))
+})
+cancel()
+}
+}
 
     private fun getPackChunk(data: ByteArray, off: Int, len: Int): ByteArray? {
         val chunk = if (data.size - off > len) {
@@ -115,7 +115,7 @@ class ModuleResourcePackSpoof : CheatModule("ResourcePackSpoof", CheatCategory.M
             ?.associate {
                 val data = it.readBytes()
                 val manifest = readManifest(it)
-                ResourcePacksInfoPacket.Entry(manifest.first, manifest.second, data.size.toLong(), "", "", "", false, false) to data
+                ResourcePacksInfoPacket.Entry(UUID.fromString(manifest.first), manifest.second, data.size.toLong(), "", "", "", false, false, false, "") to data
             } ?: emptyMap()
 
         private fun readManifest(file: File): Pair<String, String> {
@@ -132,7 +132,7 @@ class ModuleResourcePackSpoof : CheatModule("ResourcePackSpoof", CheatCategory.M
         override fun getPackById(id: String): Pair<ResourcePacksInfoPacket.Entry, ByteArray>? {
             val subId = id.substring(0, id.indexOf('_'))
             files.forEach {
-                if (it.key.packId == subId) {
+                if (it.key.packId.toString() == subId) {
                     return it.key to it.value
                 }
             }

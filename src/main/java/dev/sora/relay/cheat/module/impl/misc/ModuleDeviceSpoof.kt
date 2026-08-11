@@ -20,7 +20,7 @@ class ModuleDeviceSpoof : CheatModule("DeviceSpoof", CheatCategory.MISC) {
 
 	private val handlePacketOutbound = handle<EventPacketOutbound> {
 		if (packet is LoginPacket) {
-			val body = jwtPayload(packet.extra) ?: return@handle
+			val body = jwtPayload(packet.clientJwt) ?: return@handle
 			if (deviceIdValue) {
 				body.addProperty("ClientRandomId", Random.nextLong())
 				body.addProperty("DeviceId", Random.nextBytes(ByteArray(16)).toHexString())
@@ -31,7 +31,7 @@ class ModuleDeviceSpoof : CheatModule("DeviceSpoof", CheatCategory.MISC) {
 				body.addProperty("CurrentInputMode", 2) // Touch
 			}
 
-			packet.extra = "." + Base64.getEncoder().withoutPadding().encodeToString(AbstractConfigManager.DEFAULT_GSON.toJson(body).toByteArray(Charsets.UTF_8)) + "."
+			packet.clientJwt = "." + Base64.getEncoder().withoutPadding().encodeToString(AbstractConfigManager.DEFAULT_GSON.toJson(body).toByteArray(Charsets.UTF_8)) + "."
 		} else if (platformValue && packet is PlayerAuthInputPacket) {
 			packet.inputMode = InputMode.TOUCH
 		}

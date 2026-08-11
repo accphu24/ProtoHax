@@ -23,8 +23,8 @@ class MinecraftRelaySession(peer: BedrockPeer, subClientId: Int) : BedrockServer
         set(value) {
             value?.let {
                 it.codec = codec
-				it.peer.codecHelper.blockDefinitions = peer.codecHelper.blockDefinitions
-				it.peer.codecHelper.itemDefinitions = peer.codecHelper.itemDefinitions
+it.peer.codecHelper.blockDefinitions = peer.codecHelper.blockDefinitions
+it.peer.codecHelper.itemDefinitions = peer.codecHelper.itemDefinitions
                 queuedPackets.forEach { packet ->
                     it.sendPacket(packet)
                 }
@@ -36,11 +36,11 @@ class MinecraftRelaySession(peer: BedrockPeer, subClientId: Int) : BedrockServer
     private val queuedPackets = mutableListOf<BedrockPacket>()
     val listeners = mutableListOf<MinecraftRelayPacketListener>()
 
-	var keyPair: KeyPair? = null
-	var multithreadingSupported = false
+var keyPair: KeyPair? = null
+var multithreadingSupported = false
 
-	@OptIn(DelicateCoroutinesApi::class, ExperimentalCoroutinesApi::class)
-	private val scope = CoroutineScope(newSingleThreadContext("RakRelay") + SupervisorJob())
+@OptIn(DelicateCoroutinesApi::class, ExperimentalCoroutinesApi::class)
+private val scope = CoroutineScope(newSingleThreadContext("RakRelay") + SupervisorJob())
 
     init {
         packetHandler = SessionCloseHandler {
@@ -59,30 +59,30 @@ class MinecraftRelaySession(peer: BedrockPeer, subClientId: Int) : BedrockServer
     }
 
     override fun onPacket(wrapper: BedrockPacketWrapper) {
-		val packet = wrapper.packet
-		ReferenceCountUtil.retain(packet)
+val packet = wrapper.packet
+ReferenceCountUtil.retain(packet)
 
-		scope.launch {
-			listeners.forEach { l ->
-				try {
-					if (!l.onPacketOutbound(packet)) {
-						return@launch
-					}
-				} catch (t: Throwable) {
-					logError("packet outbound", t)
-				}
-			}
+scope.launch {
+listeners.forEach { l ->
+try {
+if (!l.onPacketOutbound(packet)) {
+return@launch
+}
+} catch (t: Throwable) {
+logError("packet outbound", t)
+}
+}
 
-			outboundPacket(packet)
+outboundPacket(packet)
 
-			listeners.forEach { l ->
-				try {
-					l.onPacketPostOutbound(packet)
-				} catch (t: Throwable) {
-					logError("packet outbound", t)
-				}
-			}
-		}
+listeners.forEach { l ->
+try {
+l.onPacketPostOutbound(packet)
+} catch (t: Throwable) {
+logError("packet outbound", t)
+}
+}
+}
     }
 
     override fun setCodec(codec: BedrockCodec) {
@@ -91,24 +91,24 @@ class MinecraftRelaySession(peer: BedrockPeer, subClientId: Int) : BedrockServer
     }
 
     fun outboundPacket(packet: BedrockPacket) {
-		if (client == null) {
-			queuedPackets.add(packet)
-		} else {
-			client!!.sendPacket(packet)
-		}
+if (client == null) {
+queuedPackets.add(packet)
+} else {
+client!!.sendPacket(packet)
+}
     }
 
     fun inboundPacket(packet: BedrockPacket) {
         sendPacket(packet)
     }
 
-	override fun disconnect(reason: String?, hideReason: Boolean) {
-		close(reason)
-	}
+override fun disconnect(reason: CharSequence, hideReason: Boolean) {
+close(reason)
+}
 
-	fun disconnectWithPacket(reason: String) {
-		super.disconnect(reason, false)
-	}
+fun disconnectWithPacket(reason: String) {
+super.disconnect(reason, false)
+}
 
     inner class MinecraftRelayClientSession(peer: BedrockPeer, subClientId: Int) : BedrockClientSession(peer, subClientId) {
 
@@ -128,41 +128,41 @@ class MinecraftRelaySession(peer: BedrockPeer, subClientId: Int) : BedrockServer
             }
         }
 
-		private fun handlePacket(packet: BedrockPacket) {
-			listeners.forEach { l ->
-				try {
-					if (!l.onPacketInbound(packet)) {
-						return
-					}
-				} catch (t: Throwable) {
-					logError("packet inbound", t)
-				}
-			}
+private fun handlePacket(packet: BedrockPacket) {
+listeners.forEach { l ->
+try {
+if (!l.onPacketInbound(packet)) {
+return
+}
+} catch (t: Throwable) {
+logError("packet inbound", t)
+}
+}
 
-			inboundPacket(packet)
-		}
+inboundPacket(packet)
+}
 
         override fun onPacket(wrapper: BedrockPacketWrapper) {
-			val packet = wrapper.packet
-			ReferenceCountUtil.retain(packet)
+val packet = wrapper.packet
+ReferenceCountUtil.retain(packet)
 
-			if (packet is ServerToClientHandshakePacket && keyPair != null) {
-				val jwtSplit = packet.jwt.split(".")
-				val headerObject = JsonParser.parseString(base64Decode(jwtSplit[0]).toString(Charsets.UTF_8)).asJsonObject
-				val payloadObject = JsonParser.parseString(base64Decode(jwtSplit[1]).toString(Charsets.UTF_8)).asJsonObject
-				val serverKey = EncryptionUtils.parseKey(headerObject.get("x5u").asString)
-				val key = EncryptionUtils.getSecretKey(keyPair!!.private, serverKey,
-					base64Decode(payloadObject.get("salt").asString)
-				)
-				enableEncryption(key)
-				outboundPacket(ClientToServerHandshakePacket())
-			} else if (multithreadingSupported) {
-				scope.launch {
-					handlePacket(packet)
-				}
-			} else {
-				handlePacket(packet)
-			}
+if (packet is ServerToClientHandshakePacket && keyPair != null) {
+val jwtSplit = packet.jwt.split(".")
+val headerObject = JsonParser.parseString(base64Decode(jwtSplit[0]).toString(Charsets.UTF_8)).asJsonObject
+val payloadObject = JsonParser.parseString(base64Decode(jwtSplit[1]).toString(Charsets.UTF_8)).asJsonObject
+val serverKey = EncryptionUtils.parseKey(headerObject.get("x5u").asString)
+val key = EncryptionUtils.getSecretKey(keyPair!!.private, serverKey,
+base64Decode(payloadObject.get("salt").asString)
+)
+enableEncryption(key)
+outboundPacket(ClientToServerHandshakePacket())
+} else if (multithreadingSupported) {
+scope.launch {
+handlePacket(packet)
+}
+} else {
+handlePacket(packet)
+}
         }
     }
 }
