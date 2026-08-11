@@ -102,8 +102,8 @@ client!!.sendPacket(packet)
         sendPacket(packet)
     }
 
-override fun disconnect(reason: CharSequence, hideReason: Boolean) {
-close(reason.toString())
+override fun disconnect(reason: CharSequence?, hideReason: Boolean) {
+close(reason?.toString() ?: "disconnect.disconnected")
 }
 
 fun disconnectWithPacket(reason: String) {
