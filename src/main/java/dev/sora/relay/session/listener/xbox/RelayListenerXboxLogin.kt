@@ -57,12 +57,11 @@ var tokenCache: IXboxIdentityTokenCache? = null
         if (packet is LoginPacket) {
 session.keyPair = keyPair
             try {
-                packet.chain.clear()
-                packet.chain.addAll(chain)
-packet.extra = signJWT(packet.extra.split('.')[1], keyPair, base64Encoded = true)
+                packet.authPayload = org.cloudburstmc.protocol.bedrock.data.auth.CertificateChainPayload(chain)
+packet.clientJwt = signJWT(packet.clientJwt.split('.')[1], keyPair, base64Encoded = true)
             } catch (e: Throwable) {
                 session.inboundPacket(DisconnectPacket().apply {
-                    kickMessage = e.toString()
+                    setKickMessage(e.toString())
                 })
                 logError("login failed", e)
             }
@@ -140,7 +139,7 @@ throw XboxGamerTagException(url)
 val request = Request.Builder()
 .url("https://multiplayer.minecraft.net/authentication")
 .post(AbstractConfigManager.DEFAULT_GSON.toJson(data).toRequestBody("application/json".toMediaType()))
-.header("Client-Version", "1.19.50")
+.header("Client-Version", "1.20.10")
 .header("Authorization", identityToken)
 .build()
 val response = HttpUtils.client.newCall(request).execute()
