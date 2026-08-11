@@ -23,7 +23,7 @@ configurations {
 dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.2")
 
-    embed('org.cloudburstmc.protocol:bedrock-connection:3.0.0.Beta1-SNAPSHOT') {
+    embed('org.cloudburstmc.protocol:bedrock-connection:3.0.0.Beta13-SNAPSHOT') {
         exclude group: 'com.nukkitx', module: 'natives'
     }
 
