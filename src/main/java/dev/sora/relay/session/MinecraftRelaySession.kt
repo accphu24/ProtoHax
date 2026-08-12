@@ -25,6 +25,7 @@ class MinecraftRelaySession(peer: BedrockPeer, subClientId: Int) : BedrockServer
                 it.codec = codec
 it.peer.codecHelper.blockDefinitions = peer.codecHelper.blockDefinitions
 it.peer.codecHelper.itemDefinitions = peer.codecHelper.itemDefinitions
+logInfo("[debug] flushing ${queuedPackets.size} queued packets: ${queuedPackets.map { it.javaClass.simpleName }}")
                 queuedPackets.forEach { packet ->
                     it.sendPacket(packet)
                 }
@@ -92,6 +93,7 @@ logError("packet outbound", t)
 
     fun outboundPacket(packet: BedrockPacket) {
 if (client == null) {
+logInfo("[debug] queueing packet (client chua san sang): ${packet.javaClass.simpleName}")
 queuedPackets.add(packet)
 } else {
 client!!.sendPacket(packet)
@@ -145,6 +147,7 @@ inboundPacket(packet)
         override fun onPacket(wrapper: BedrockPacketWrapper) {
 val packet = wrapper.packet
 ReferenceCountUtil.retain(packet)
+logInfo("[debug] received from server: ${packet.javaClass.simpleName}")
 
 if (packet is ServerToClientHandshakePacket && keyPair != null) {
 val jwtSplit = packet.jwt.split(".")
