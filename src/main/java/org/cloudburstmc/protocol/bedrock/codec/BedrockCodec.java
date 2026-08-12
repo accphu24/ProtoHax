@@ -5,6 +5,7 @@ import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 import org.checkerframework.checker.index.qual.NonNegative;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.cloudburstmc.protocol.bedrock.data.PacketRecipient;
 import org.cloudburstmc.protocol.bedrock.packet.BedrockPacket;
 import org.cloudburstmc.protocol.bedrock.packet.UnknownPacket;
 
@@ -18,6 +19,8 @@ import static org.cloudburstmc.protocol.common.util.Preconditions.checkNotNull;
 
 /**
  * fallback serialization errors into [UnknownPacket] to make sure packets are symmetric
+ * (patched: merged voi API that cua Beta13 - registerPacket/PacketRecipient, giu lai
+ * hanh vi fallback UnknownPacket khi decode loi thay vi throw)
  */
 public final class BedrockCodec {
     private static final InternalLogger log = InternalLoggerFactory.getInstance(BedrockCodec.class);
@@ -32,9 +35,19 @@ public final class BedrockCodec {
         return new Builder();
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
     public BedrockPacket tryDecode(BedrockCodecHelper helper, ByteBuf buf, int id) throws PacketSerializeException {
+        return tryDecode(helper, buf, id, null);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public BedrockPacket tryDecode(BedrockCodecHelper helper, ByteBuf buf, int id, PacketRecipient recipient) throws PacketSerializeException {
         BedrockPacketDefinition<? extends BedrockPacket> definition = getPacketDefinition(id);
+
+        if (definition != null && recipient != null && definition.getRecipient() != PacketRecipient.BOTH &&
+                definition.getRecipient() != recipient) {
+            throw new IllegalArgumentException("Packet " + definition.getFactory().get().getClass().getSimpleName() + " was sent to " + recipient + " instead of " + definition.getRecipient());
+        }
+
         BedrockPacket packet;
         BedrockPacketSerializer<BedrockPacket> serializer;
         if (definition == null) {
@@ -51,7 +64,6 @@ public final class BedrockCodec {
         try {
             serializer.deserialize(buf, helper, packet);
         } catch (Exception e) {
-            // throw new PacketSerializeException("Error whilst deserializing " + packet, e);
             log.error("Error whilst deserializing " + packet, e);
             hasFailure = true;
         }
@@ -123,11 +135,11 @@ public final class BedrockCodec {
         private String minecraftVersion = null;
         private Supplier<BedrockCodecHelper> helperFactory;
 
-        public <T extends BedrockPacket> Builder registerPacket(Supplier<T> factory, BedrockPacketSerializer<T> serializer, @NonNegative int id) {
+        public <T extends BedrockPacket> Builder registerPacket(Supplier<T> factory, BedrockPacketSerializer<T> serializer, @NonNegative int id, PacketRecipient recipient) {
             Class<? extends BedrockPacket> packetClass = factory.get().getClass();
             checkArgument(id >= 0, "id cannot be negative");
             checkArgument(!packets.containsKey(packetClass), "Packet class already registered");
-            BedrockPacketDefinition<T> info = new BedrockPacketDefinition<>(id, factory, serializer, org.cloudburstmc.protocol.bedrock.data.PacketRecipient.BOTH);
+            BedrockPacketDefinition<T> info = new BedrockPacketDefinition<>(id, factory, serializer, recipient);
             packets.put(packetClass, info);
             return this;
         }
@@ -137,6 +149,24 @@ public final class BedrockCodec {
             checkArgument(info != null, "Packet does not exist");
             BedrockPacketDefinition<T> updatedInfo = new BedrockPacketDefinition<>(info.getId(), info.getFactory(), serializer, info.getRecipient());
             packets.replace(packetClass, info, updatedInfo);
+            return this;
+        }
+
+        public <T extends BedrockPacket> Builder updateFactory(Class<T> packetClass, Supplier<? extends T> factory) {
+            BedrockPacketDefinition<T> info = (BedrockPacketDefinition<T>) packets.get(packetClass);
+            checkArgument(info != null, "Packet does not exist");
+            BedrockPacketDefinition<T> updatedInfo = new BedrockPacketDefinition<>(info.getId(), (Supplier<T>) factory, info.getSerializer(), info.getRecipient());
+            packets.replace(packetClass, info, updatedInfo);
+            return this;
+        }
+
+        public <T extends BedrockPacket, A extends T> Builder aliasPacket(Class<A> packetClass, Class<T> aliasedClass) {
+            checkNotNull(packetClass, "packetClass");
+            checkNotNull(aliasedClass, "aliasedClass");
+            checkArgument(!packets.containsKey(packetClass), "Packet class already registered");
+            BedrockPacketDefinition<? extends BedrockPacket> info = packets.get(aliasedClass);
+            checkArgument(info != null, "Packet does not exist");
+            packets.put(packetClass, info);
             return this;
         }
 
