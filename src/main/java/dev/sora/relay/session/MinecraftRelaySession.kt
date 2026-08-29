@@ -63,6 +63,9 @@ private val scope = CoroutineScope(newSingleThreadContext("RakRelay") + Supervis
 val packet = wrapper.packet
 ReferenceCountUtil.retain(packet)
 logInfo("[debug] nhan tu client: ${packet.javaClass.simpleName}")
+if (packet is org.cloudburstmc.protocol.bedrock.packet.UnknownPacket) {
+logInfo("[debug] UnknownPacket chi tiet: packetId=${packet.packetId} (0x${Integer.toHexString(packet.packetId)}), currentCodec=${session.codec.minecraftVersion}/${session.codec.protocolVersion}, payloadLen=${packet.payload?.readableBytes()}")
+}
 
 scope.launch {
 listeners.forEach { l ->
