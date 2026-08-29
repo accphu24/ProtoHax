@@ -62,11 +62,13 @@ private val scope = CoroutineScope(newSingleThreadContext("RakRelay") + Supervis
     override fun onPacket(wrapper: BedrockPacketWrapper) {
 val packet = wrapper.packet
 ReferenceCountUtil.retain(packet)
+logInfo("[debug] nhan tu client: ${packet.javaClass.simpleName}")
 
 scope.launch {
 listeners.forEach { l ->
 try {
 if (!l.onPacketOutbound(packet)) {
+logInfo("[debug] listener ${l.javaClass.simpleName} chan goi tin ${packet.javaClass.simpleName}")
 return@launch
 }
 } catch (t: Throwable) {
